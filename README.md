@@ -26,7 +26,9 @@ Then open:
 |--------|------|-------------|
 | GET | `/` | API info (name, version, endpoints) |
 | GET | `/health` | Health check |
-| GET | `/tasks` | List all tasks |
+| POST | `/reset` | Restore the 3 seed tasks |
+| GET | `/tasks` | List all tasks (?done=true|false, ?search=...) |
+| GET | `/tasks/stats` | Counts: total, done, pending |
 | GET | `/tasks/{id}` | Get a task by ID |
 | POST | `/tasks` | Create a new task |
 | PUT | `/tasks/{id}` | Update a task |

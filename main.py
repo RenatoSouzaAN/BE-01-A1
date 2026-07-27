@@ -16,11 +16,13 @@ class TaskUpdate(BaseModel):
     title: str | None = None
     done: bool | None = None
 
-tasks = [
+SEED_TASKS = [
     {"id": 1, "title": "Task 1", "done": True},
     {"id": 2, "title": "Task 2", "done": False},
     {"id": 3, "title": "Task 3", "done": True},
 ]
+
+tasks = [task.copy() for task in SEED_TASKS]
 
 @app.get("/")
 async def root():
@@ -37,10 +39,31 @@ async def health():
     """
     return {"status": "ok"}
 
+@app.post("/reset")
+async def reset_tasks_list():
+    """Reset the tasks list."""
+    global tasks
+    tasks = [task.copy() for task in SEED_TASKS]
+    return JSONResponse(status_code=200, content={"message": "Tasks list reset successfully."})
+
 @app.get("/tasks")
-async def get_tasks():
+async def get_tasks(done: bool | None = None, search: str | None = None):
     """List all tasks."""
-    return tasks
+    filtered_tasks = tasks
+    if done is not None:
+        filtered_tasks = [task for task in filtered_tasks if task["done"] == done]
+    if search is not None:
+        filtered_tasks = [task for task in filtered_tasks if search.lower() in task["title"].lower()]
+    return filtered_tasks
+
+@app.get("/tasks/stats")
+async def get_tasks_stats():
+    """Get the statistics of the tasks."""
+    return {
+        "total": len(tasks),
+        "done": sum(1 for task in tasks if task["done"]),
+        "pending": sum(1 for task in tasks if not task["done"])
+    }
 
 @app.get("/tasks/{id}")
 async def get_tasks_by_id(id: int):
