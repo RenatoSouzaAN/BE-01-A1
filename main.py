@@ -1,3 +1,4 @@
+import sqlite3
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic.main import BaseModel
@@ -23,6 +24,21 @@ SEED_TASKS = [
 ]
 
 tasks = [task.copy() for task in SEED_TASKS]
+
+def init_db():
+    con = sqlite3.connect("tasks.db")
+    cur = con.cursor()
+    cur.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, done INTEGER)")
+    
+    cur.execute("SELECT COUNT(*) FROM tasks")
+    count = cur.fetchone()[0]
+    if count == 0:
+        for task in SEED_TASKS:
+            cur.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", (task["title"], task["done"]))
+    con.commit()
+    con.close()
+
+init_db()
 
 @app.get("/")
 async def root():
