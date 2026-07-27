@@ -25,6 +25,7 @@ SEED_TASKS = [
 
 tasks = [task.copy() for task in SEED_TASKS]
 
+
 def init_db():
     con = sqlite3.connect("tasks.db")
     cur = con.cursor()
@@ -63,14 +64,19 @@ async def reset_tasks_list():
     return JSONResponse(status_code=200, content={"message": "Tasks list reset successfully."})
 
 @app.get("/tasks")
-async def get_tasks(done: bool | None = None, search: str | None = None):
+async def get_tasks():
+# async def get_tasks(done: bool | None = None, search: str | None = None):
     """List all tasks."""
-    filtered_tasks = tasks
-    if done is not None:
-        filtered_tasks = [task for task in filtered_tasks if task["done"] == done]
-    if search is not None:
-        filtered_tasks = [task for task in filtered_tasks if search.lower() in task["title"].lower()]
-    return filtered_tasks
+    con = sqlite3.connect("tasks.db")
+    cur = con.cursor()
+    cur.execute("SELECT * FROM tasks")
+    tasks = cur.fetchall()
+    # filtered_tasks = tasks
+    # if done is not None:
+    #     filtered_tasks = [task for task in filtered_tasks if task["done"] == done]
+    # if search is not None:
+    #     filtered_tasks = [task for task in filtered_tasks if search.lower() in task["title"].lower()]
+    return tasks
 
 @app.get("/tasks/stats")
 async def get_tasks_stats():
@@ -84,11 +90,14 @@ async def get_tasks_stats():
 @app.get("/tasks/{id}")
 async def get_tasks_by_id(id: int):
     """Get a task by its ID."""
-    for task in tasks:
-        if task["id"] == id:
-            return task
-    
-    return JSONResponse(status_code=404,content={"error": f"Task {id} not found"})
+    con = sqlite3.connect("tasks.db")
+    cur = con.cursor()
+    cur.execute("SELECT * FROM tasks WHERE id = ?", (id,))
+    task = cur.fetchone()
+    if task:
+        return task
+    else:
+        return JSONResponse(status_code=404,content={"error": f"Task {id} not found"})
 
 @app.post("/tasks", status_code=201)
 async def create_task(task: TaskCreate):
