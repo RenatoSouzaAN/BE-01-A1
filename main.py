@@ -25,7 +25,6 @@ SEED_TASKS = [
 
 tasks = [task.copy() for task in SEED_TASKS]
 
-
 def init_db():
     con = sqlite3.connect("tasks.db")
     cur = con.cursor()
@@ -40,6 +39,13 @@ def init_db():
     con.close()
 
 init_db()
+
+def row_to_task(row):
+    return {
+        "id": row[0],
+        "title": row[1],
+        "done": bool(row[2]),
+    }
 
 @app.get("/")
 async def root():
@@ -76,7 +82,7 @@ async def get_tasks():
     #     filtered_tasks = [task for task in filtered_tasks if task["done"] == done]
     # if search is not None:
     #     filtered_tasks = [task for task in filtered_tasks if search.lower() in task["title"].lower()]
-    return tasks
+    return [row_to_task(row) for row in tasks]
 
 @app.get("/tasks/stats")
 async def get_tasks_stats():
@@ -95,19 +101,27 @@ async def get_tasks_by_id(id: int):
     cur.execute("SELECT * FROM tasks WHERE id = ?", (id,))
     task = cur.fetchone()
     if task:
-        return task
+        return row_to_task(task)
     else:
         return JSONResponse(status_code=404,content={"error": f"Task {id} not found"})
 
 @app.post("/tasks", status_code=201)
 async def create_task(task: TaskCreate):
     """Create a new task."""
+    con = sqlite3.connect("tasks.db")
+    cur = con.cursor()
+    new_task = None
     if not task.title:
         return JSONResponse(status_code=400, content={"error": "Title is required."})
-    next_id = max(task["id"] for task in tasks) + 1
-    new_task = {"id": next_id, "title": task.title, "done": False}
-    tasks.append(new_task)
-    return new_task
+
+    cur.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", (task.title, False))
+    con.commit()
+    new_id = cur.lastrowid
+    cur.execute("SELECT * FROM tasks WHERE id = ?", (new_id,))
+    new_task = cur.fetchone()
+    con.close()
+
+    return row_to_task(new_task)
 
 @app.put("/tasks/{id}")
 async def update_task(id: int, task: TaskUpdate):
