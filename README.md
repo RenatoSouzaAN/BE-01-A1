@@ -101,3 +101,25 @@ Feel free to add extras such as filtering by query parameters, searching with qu
 - Exact error body shape (`{"error": "..."}` vs FastAPI's `detail` wrapper), seed task titles, and whether DELETE must return an empty body. One rematch takeaway: name the response contract as precisely as the status codes, or the AI will fill the gaps with framework defaults.
 
 **One rematch note:** tightening the prompt around "404 body must be exactly `{ \"error\": \"Task N not found\" }` with no `detail` wrapper" and "204 must have zero body" would close the two biggest silent diffs.
+
+### Prompt rating: 7/10
+
+Solid for a first rematch prompt — clear enough to get a working API, not precise enough to lock the response contract.
+
+**What the prompt got right**
+- Scope quarantine: `ai-version/` only (+ README append) — the most important Stage 7 constraint.
+- Stack + storage: FastAPI, in-memory, no DB — no room for the AI to invent a database.
+- CRUD + status codes: 201 / 200 / 404 / 400 named explicitly.
+- Swagger note: one-line descriptions — shows docs come from the code.
+- Extras as optional: "feel free" keeps stretch goals from becoming mandatory noise.
+
+**Where it was weak**
+- Paths never named. Said "GET for all tasks" but not `GET /tasks` or `GET /tasks/{id}` — an AI could invent `/todos` or `/api/v1/tasks`. It matched by luck/training, not because the prompt forced it.
+- Error body shape missing. Status codes without payload shape = incomplete API contract (hence FastAPI's `detail` wrapper).
+- DELETE incomplete: no `204` + empty body required.
+- Validation rules fuzzy: missing title vs empty string `""` vs whitespace-only vs PUT with `{}`.
+- Seed data unspecified: "original state" for `/reset` needs the 3 seed tasks defined.
+- Process mixed with product: commit instructions belong in workflow, not in the API spec.
+- Root/health payloads unspecified (`Task API` / `{ "status": "ok" }`).
+
+**If only one paragraph could be rewritten to raise this to a 9:** the paths. Without exact URLs, the whole contract floats — that is the main purpose of the task.
