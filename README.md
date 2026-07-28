@@ -1,10 +1,21 @@
 # Task API
 
-FastAPI CRUD to-do list (in-memory) done as an exercise for the AI Back-end track.
+FastAPI CRUD to-do list with SQLite done as an exercise for the AI Back-end track.
 
 ## Requirements
 
 - Python 3.10+
+
+## Database
+
+SQLite was chosen as it requires no extra steps for it's usage. As it's a simple project, it being a single file is perfect for the current complexity, and it does its purpose of retaining the data through server restarts.
+
+The database open in DBeaver:
+![Database](db.png)
+
+Running a query for fetching all items in the database:
+![DatabaseQuery](db_queryrun.png)
+
 
 ## Install & run
 
