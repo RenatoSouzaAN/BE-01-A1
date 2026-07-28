@@ -1,5 +1,5 @@
 import sqlite3
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.responses import JSONResponse
 from pydantic.main import BaseModel
 
@@ -126,25 +126,39 @@ async def create_task(task: TaskCreate):
 @app.put("/tasks/{id}")
 async def update_task(id: int, task: TaskUpdate):
     """Update a task by its ID."""
+    con = sqlite3.connect("tasks.db")
+    cur = con.cursor()
+
+    cur.execute("SELECT * FROM tasks WHERE id = ?", (id,))
+    currentValue = cur.fetchone()
     if task.title is None and task.done is None:
         return JSONResponse(status_code=400, content={"error": "At least one field to update is required."})
-    for t in tasks:
-        if t["id"] == id:
-            if task.title is not None:
-                t["title"] = task.title
 
-            if task.done is not None:
-                t["done"] = task.done
-            return t
-    
-    return JSONResponse(status_code=404, content={"error": f"Task {id} not found"})
+    if task.title is None:
+        task.title = currentValue[1]
+    if task.done is None:
+        task.done = currentValue[2]
+
+    cur.execute("UPDATE tasks SET title = ?, done = ? WHERE id = ?", (task.title, task.done, id))
+    con.commit()
+    cur.execute("SELECT * FROM tasks WHERE id = ?", (id,))
+    updated_task = cur.fetchone()
+    con.close()
+
+    return row_to_task(updated_task)
 
 @app.delete("/tasks/{id}", status_code=204)
 async def delete_task_by_id(id: int):
     """Delete a task by its ID."""
-    for task in tasks:
-        if task["id"] == id:
-            tasks.remove(task)
-            return JSONResponse(status_code=204, content={"message": f"Task {id} deleted successfully."})
+    con = sqlite3.connect("tasks.db")
+    cur = con.cursor()
+   
+    cur.execute("DELETE FROM tasks WHERE id = ?", (id,))
+    con.commit()
+
+    if cur.rowcount == 0:
+        con.close()
+        return JSONResponse(status_code=404, content={"error": f"Task {id} not found"})
     
-    return JSONResponse(status_code=404, content={"error": f"Task {id} not found"})
+    con.close()
+    return Response(status_code=204)
