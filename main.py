@@ -1,3 +1,4 @@
+from datetime import datetime
 import sqlite3
 from fastapi import FastAPI, Response
 from fastapi.responses import JSONResponse
@@ -18,9 +19,9 @@ class TaskUpdate(BaseModel):
     done: bool | None = None
 
 SEED_TASKS = [
-    {"id": 1, "title": "Task 1", "done": True},
-    {"id": 2, "title": "Task 2", "done": False},
-    {"id": 3, "title": "Task 3", "done": True},
+    {"id": 1, "title": "Task 1", "done": True, "created_at": datetime.now(), "updated_at": datetime.now()},
+    {"id": 2, "title": "Task 2", "done": False, "created_at": datetime.now(), "updated_at": datetime.now()},
+    {"id": 3, "title": "Task 3", "done": True, "created_at": datetime.now(), "updated_at": datetime.now()},
 ]
 
 tasks = [task.copy() for task in SEED_TASKS]
@@ -28,13 +29,13 @@ tasks = [task.copy() for task in SEED_TASKS]
 def init_db():
     con = sqlite3.connect("tasks.db")
     cur = con.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, done INTEGER)")
+    cur.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, done INTEGER, created_at TEXT, updated_at TEXT)")
     
     cur.execute("SELECT COUNT(*) FROM tasks")
     count = cur.fetchone()[0]
     if count == 0:
         for task in SEED_TASKS:
-            cur.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", (task["title"], task["done"]))
+            cur.execute("INSERT INTO tasks (title, done, created_at, updated_at) VALUES (?, ?, ?, ?)", (task["title"], task["done"], task["created_at"], task["updated_at"]))
     con.commit()
     con.close()
 
@@ -70,19 +71,30 @@ async def reset_tasks_list():
     return JSONResponse(status_code=200, content={"message": "Tasks list reset successfully."})
 
 @app.get("/tasks")
-async def get_tasks():
-# async def get_tasks(done: bool | None = None, search: str | None = None):
+async def get_tasks(done: bool | None = None, search: str | None = None):
     """List all tasks."""
     con = sqlite3.connect("tasks.db")
     cur = con.cursor()
-    cur.execute("SELECT * FROM tasks")
-    tasks = cur.fetchall()
-    # filtered_tasks = tasks
-    # if done is not None:
-    #     filtered_tasks = [task for task in filtered_tasks if task["done"] == done]
-    # if search is not None:
-    #     filtered_tasks = [task for task in filtered_tasks if search.lower() in task["title"].lower()]
-    return [row_to_task(row) for row in tasks]
+
+    clauses = []
+    params = []
+
+    if done is not None:
+        clauses.append("done = ?")
+        params.append(done)
+
+    if search is not None:
+        clauses.append("LOWER(title) LIKE LOWER(?)")
+        params.append(f"%{search}%")
+
+    query = "SELECT * FROM tasks"
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+
+    cur.execute(query, params)
+    filtered_tasks = cur.fetchall()
+    con.close()
+    return [row_to_task(row) for row in filtered_tasks]
 
 @app.get("/tasks/stats")
 async def get_tasks_stats():
@@ -114,7 +126,7 @@ async def create_task(task: TaskCreate):
     if not task.title:
         return JSONResponse(status_code=400, content={"error": "Title is required."})
 
-    cur.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", (task.title, False))
+    cur.execute("INSERT INTO tasks (title, done, created_at, updated_at) VALUES (?, ?, ?, ?)", (task.title, False, datetime.now(), datetime.now()))
     con.commit()
     new_id = cur.lastrowid
     cur.execute("SELECT * FROM tasks WHERE id = ?", (new_id,))
@@ -139,7 +151,7 @@ async def update_task(id: int, task: TaskUpdate):
     if task.done is None:
         task.done = currentValue[2]
 
-    cur.execute("UPDATE tasks SET title = ?, done = ? WHERE id = ?", (task.title, task.done, id))
+    cur.execute("UPDATE tasks SET title = ?, done = ?, updated_at = ? WHERE id = ?", (task.title, task.done, datetime.now(), id))
     con.commit()
     cur.execute("SELECT * FROM tasks WHERE id = ?", (id,))
     updated_task = cur.fetchone()

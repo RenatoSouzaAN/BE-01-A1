@@ -16,6 +16,11 @@ The database open in DBeaver:
 Running a query for fetching all items in the database:
 ![DatabaseQuery](db_queryrun.png)
 
+### Adding Timestamps
+
+`created_at` and `updated_at` are stored in SQLite but not returned by the API, by choice.
+
+Changing `CREATE TABLE` only affects **new** database files. An existing `tasks.db` keeps the old schema. For this project, delete `tasks.db` and restart the app (it recreates and seeds itself). In larger apps you'd use a migration tool (`ALTER TABLE` / Alembic) instead of deleting data.
 
 ## Install & run
 
